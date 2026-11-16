@@ -1,0 +1,32 @@
+# ---- STM32CubeIDE build output (regenerated on every build) ----
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.map
+*.list
+*.bin
+*.hex
+objects.list
+objects.mk
+sources.mk
+makefile
+subdir.mk
+secure_nsclib.o
+
+# ---- Eclipse / CubeIDE workspace and per-user settings ----
+.metadata/
+.settings/language.settings.xml
+*.launch
+
+# ---- CubeMX backups ----
+*.ioc.bak
+.mxproject.bak
+
+# ---- OS junk ----
+Thumbs.db
+desktop.ini
+.DS_Store
