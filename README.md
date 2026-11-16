@@ -1,62 +1,68 @@
 # STM32N6 Nucleo Learning (NUCLEO-N657X0-Q)
 
-Hands-on embedded systems work on the **STMicroelectronics NUCLEO-N657X0-Q** board
-(STM32N657X0H3Q, Arm Cortex-M55 @ 600 MHz, Neural-ART NPU, no internal flash).
+Hands-on embedded systems work on the **STMicroelectronics NUCLEO-N657X0-Q** board,
+working up from HAL-based peripherals to register-level code, with real measurements at
+each step.
 
-## Day 1: GPIO, UART printf, button polling and EXTI interrupt (`Day1_n6/`)
+| | |
+|---|---|
+| **MCU** | STM32N657X0H3Q, Arm **Cortex-M55 @ 600 MHz**, Neural-ART NPU |
+| **Memory** | 4.2 MB internal RAM, **no internal flash** (boots from external xSPI NOR flash) |
+| **Board** | ST-LINK V3EC on board, 3 user LEDs, user button, Ethernet (RMII PHY), USB Type-C |
+| **Tools** | STM32CubeMX, STM32CubeIDE, STM32CubeN6 HAL, Git |
 
-Configured with **STM32CubeMX**, built and debugged in **STM32CubeIDE**, running
-from internal RAM (AXISRAM2) in development boot mode.
+---
 
-### What it does
-| Exercise | Behaviour | Concept |
-|---|---|---|
-| 1 | Red LED blinks, counter printed over UART | Blocking delay (`HAL_Delay`) |
-| 2 | Button toggles green LED, red LED heartbeat | Polling, edge detection, software debounce, non-blocking timing |
-| 3 | Same as 2, button handled by interrupt | EXTI + NVIC, ISR sets a `volatile` flag, main loop does the work |
+## Progress
 
-Select the exercise with `#define DAY1_EXERCISE` in `FSBL/Core/Src/main.c`.
+| Day | Topic | Key results | Details |
+|---|---|---|---|
+| **1** | GPIO output, UART `printf`, button polling, **EXTI interrupt** | CPU confirmed at 600 MHz; interrupt-driven button with 50 ms debounce; debugged "No device found on target" down to boot mode | [Day1_n6/RESULTS.md](Day1_n6/RESULTS.md) |
+| **2** | **Register-level GPIO**, DWT cycle benchmarks, clock tree, SysTick | BSRR write ≈ 0 cycles vs ODR read-modify-write 72 cycles at `-O2` (writes buffered, reads stall); HAL call 80–100 cycles; `HAL_Delay(1000)` measured as 1.00047 s and explained from HAL source | [Day2_n6/RESULTS.md](Day2_n6/RESULTS.md) |
 
-### Hardware mapping (from UM3417)
+---
+
+## Repository layout
+
+```
+Day1_n6/            Day 1 CubeMX + CubeIDE project
+  Day1_n6.ioc       CubeMX configuration (pins, clocks)
+  FSBL/Core/        application code (main.c etc.)
+  Drivers/          STM32N6 HAL + CMSIS (included so the project builds as-is)
+  RESULTS.md        what was done, why, measured results, lessons
+Day2_n6/            Day 2 project (same layout)
+```
+
+Each project is a single **FSBL** (First Stage Boot Loader) project, built to run from
+internal RAM (AXISRAM2).
+
+---
+
+## Hardware notes (from UM3417 and testing)
+
 | Function | Pin | Notes |
 |---|---|---|
 | Red LED (LD5) | PG10 | Active low |
 | Green LED (LD6) | PG0 | Active low |
-| User button (B1) | PC13 | Active high, internal pull-down, EXTI13 rising edge |
-| Virtual COM port | USART1 PE5 (TX) / PE6 (RX), AF7 | 115200 8N1 via ST-LINK |
+| Blue LED (LD7) | PG8 | Active low |
+| User button (B1) | PC13 | Active high (needs pull-down) |
+| Virtual COM port | USART1 PE5 (TX) / PE6 (RX) | 115200 8N1 via ST-LINK |
 
-### Clock
-HSI 64 MHz → PLL1 (÷4 ×75) = 1200 MHz → IC1 ÷2 → **CPU 600 MHz**
+**Boot mode matters for debugging.** The STM32N6 only opens its debug port in
+**development boot** mode. On my board that is **JP2 (BOOT1) on pins [1-2]**, which the
+boot ROM confirms by turning the red LED on steady. In flash boot mode, the debugger
+reports `No device found on target`.
 
-### Output
-```
-=== NUCLEO-N657X0-Q Day 1 ===
-SystemCoreClock = 600000000 Hz
-Exercise 3 running
-[irq] press 1, green=1
-[irq] press 2, green=0
-[irq] press 3, green=1
-```
+---
 
-### How to run
-1. Board unpowered: set **JP2 (BOOT1) to development boot**. On my board this was
-   position **[1-2]**; the boot ROM shows it by turning the red LED on steady.
-2. Open `Day1_n6/FSBL` in STM32CubeIDE, build (Ctrl+B).
-3. Debug As → STM32 C/C++ Application → Resume (F8).
-4. Open the ST-LINK Virtual COM port at 115200 8N1.
+## How to run a project
 
-The program runs from RAM, so it must be reloaded after every power cycle.
+1. Board unpowered: set **JP2 to development boot** (see above), then connect the
+   ST-LINK USB-C port (CN10).
+2. In STM32CubeIDE: **File → Import → Existing Projects into Workspace** → select the
+   `DayN_n6` folder.
+3. Build the `DayN_n6_FSBL` project (Ctrl+B).
+4. Right-click the project → **Debug As → STM32 C/C++ Application** → Resume (F8).
+5. Open the ST-LINK Virtual COM port at **115200 8N1** to see the output.
 
-### What I learned
-- STM32N6 boot flow: boot ROM → development boot (debug port open) vs flash boot
-  (debug port closed), and why the debugger reported "No device found on target".
-- CubeMX on N6: assigning pins and peripherals to the **FSBL runtime context**,
-  and checking CubeMX's automatic pin choices against the board manual.
-- Interrupt chain: EXTI → NVIC → IRQ handler → HAL callback; keeping ISRs short;
-  why shared ISR variables must be `volatile`.
-- Retargeting `printf` to UART through `__io_putchar`.
-- Systematic debug-probe troubleshooting (USB driver → ST-LINK firmware → target
-  power → boot mode).
-
-## Tools
-STM32CubeMX, STM32CubeIDE, STM32CubeN6 HAL, ST-LINK V3EC
+Code runs from RAM, so it must be reloaded after every power cycle.
