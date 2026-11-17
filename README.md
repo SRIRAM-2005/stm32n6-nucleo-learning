@@ -9,7 +9,7 @@ each step.
 | **MCU** | STM32N657X0H3Q, Arm **Cortex-M55 @ 600 MHz**, Neural-ART NPU |
 | **Memory** | 4.2 MB internal RAM, **no internal flash** (boots from external xSPI NOR flash) |
 | **Board** | ST-LINK V3EC on board, 3 user LEDs, user button, Ethernet (RMII PHY), USB Type-C |
-| **Tools** | STM32CubeMX, STM32CubeIDE, STM32CubeN6 HAL, Git |
+| **Tools** | STM32CubeMX, STM32CubeIDE, STM32CubeN6 HAL, CMSIS-NN, Wireshark, Git |
 
 ---
 
@@ -22,6 +22,7 @@ each step.
 | **3** | **Hardware timers**: TIM6 interrupt, TIM12 **PWM** (fixed and breathing LEDs), **I-cache / D-cache** benchmarks | Timer period exactly 600,000,000 cycles (same PLL as CPU); caches were off by default, and enabling both gave an **8.6× speed-up**; I-cache alone showed no gain because data stalls hid it | [Day3_n6/RESULTS.md](Day3_n6/RESULTS.md) |
 | **4** | **Boot chain (theory)**: boot ROM, boot pins, image header, OTP fuses | Not done on hardware: flash boot may need a permanent OTP fuse, and the board is college property | [Day4_boot_theory/README.md](Day4_boot_theory/README.md) |
 | **5** | **Ethernet MAC + PHY, raw frames**: MDIO PHY scan, auto-negotiation, TX/RX without a TCP/IP stack | LAN8742A found at MDIO address 0; 100 Mbit/s full duplex negotiated; raw frames (EtherType 0x88B5) seen in Wireshark with MAC-added padding; promiscuous RX matched the laptop's DHCP/mDNS traffic | [Day5_n6/RESULTS.md](Day5_n6/RESULTS.md) |
+| **6** | **TinyML on the Cortex-M55 CPU**: int8 Conv1D, plain C vs **CMSIS-NN (Helium)**, caches off/on, `-O0`/`-O2` | Outputs bit-identical in all cases; at `-O2` with caches, CMSIS-NN ran the 81,920-MAC layer in **85 k cycles (0.14 ms)**, about 450× faster than naive C at `-O0` without caches | [Day6_n6/RESULTS.md](Day6_n6/RESULTS.md) |
 
 ---
 
@@ -37,6 +38,7 @@ Day2_n6/            Day 2 project (same layout)
 Day3_n6/            Day 3 project (same layout)
 Day4_boot_theory/   Day 4 notes (no project: theory only)
 Day5_n6/            Day 5 project (same layout; linker script edited for ETH descriptors)
+Day6_n6/            Day 6 project (+ FSBL/CMSIS-NN: 3 sources + headers, Apache-2.0)
 ```
 
 Each project is a single **FSBL** (First Stage Boot Loader) project, built to run from
